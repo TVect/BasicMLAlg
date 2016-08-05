@@ -30,34 +30,37 @@ class EM_GMM(object):
         self.k_dim = 1
 
 
-    def mainframe(self, in_arr, cluster_cnt, iter_limit=2):
+    def mainframe(self, in_arr, cluster_cnt, iter_limit=100, tolerances=1e-6):
         in_arr = np.array(in_arr)
         k_size, k_dim = in_arr.shape # 列表示是几纬的数据
         self.k_dim = k_dim
         self.cluster_cnt = cluster_cnt
 
+        # 参数的初始化
         self.coef_list = np.random.random(self.cluster_cnt)
         self.coef_list = self.coef_list / self.coef_list.sum()
 
         self.sigma_list = [np.eye(self.k_dim, self.k_dim) for _ in range(cluster_cnt)]
         self.mu_list = [in_arr[int(i)] for i in np.linspace(0, k_size-1, num=cluster_cnt)]
+        likelihood = 0.0
 
         for it in range(iter_limit):
-            print "------------------iter:", it
+            print("------------------------- iter: %s -------------------------" % it)
             print "mu:", self.mu_list
-            print "sigma", self.sigma_list
-            print "coef", self.coef_list
+            print "sigma:", self.sigma_list
+            print "coef:", self.coef_list
+            print "likelihood:", likelihood
 
-            gam_nk = [] #反映了数据 n属于类别 k的概率
             # e-step
+            gam_nk = [] #反映了数据 n属于类别 k的概率
             for in_samp in in_arr:
                 gam = [multi_guassin_pdf(in_samp, self.mu_list[k], self.sigma_list[k]) 
                        * self.coef_list[k] for k in range(cluster_cnt)]
                 gam_nk.append(np.array(gam) / float(np.sum(gam)))
+            
             # m-step
             tmp_nk = np.sum(gam_nk, axis=0)
             self.coef_list = tmp_nk / k_size
-#             print self.coef_list
             for k in range(self.cluster_cnt):
                 u_sum = np.zeros(k_dim)
                 sigma_sum = np.zeros((k_dim, k_dim))
@@ -67,4 +70,15 @@ class EM_GMM(object):
                 for i in range(k_size):
                     sigma_sum += gam_nk[i][k] * np.mat(in_arr[i]-self.mu_list[k]).T * np.mat(in_arr[i]-self.mu_list[k])
                 self.sigma_list[k] = sigma_sum / tmp_nk[k]
+            
+            # 计算log似然函数值
+            new_log_likelihood = 0.0
+            for in_samp in in_arr:
+                new_log_likelihood += np.log(np.sum([self.coef_list[k] * 
+                                                     multi_guassin_pdf(in_samp, self.mu_list[k], self.sigma_list[k]) 
+                                                     for k in range(self.cluster_cnt)]))
+            if np.abs(new_log_likelihood - likelihood) < np.abs(likelihood) * tolerances:
+                print "hit the tolerances: likelihood=", likelihood, "new_likelihood=", new_log_likelihood
+                break
+            likelihood = new_log_likelihood
 
