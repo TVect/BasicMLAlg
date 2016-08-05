@@ -15,20 +15,22 @@ import math
 class PLSA(object):
     
     def __init__(self, docs):
+        '''
+        @param docs: list of list
+        '''
         self.pdoc_topic = None
         self.ptopic_word = None
 
-        self.word_set = []
-        self.docs = docs
+        self.word_set = set([])
+        self.docs = []
+        for doc in docs:
+            doc_dict = {}
+            for wd in doc:
+                self.word_set.add(wd)
+                doc_dict.setdefault(wd, 0)
+                doc_dict[wd] += 1
+            self.docs.append(doc_dict)
 
-        self._initial_wordset()
-
-
-    def _initial_wordset(self):
-        for doc in self.docs:
-            for word in doc:
-                self.word_set.append(word)
-    
 
     def training_em(self, topic_num=3, iter_num=100, epsilon=1e-6, train_data="data/train.dat"):
         '''
