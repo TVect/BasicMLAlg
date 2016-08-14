@@ -1,0 +1,2 @@
+
+from lnn import LinearNetwork
